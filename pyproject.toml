@@ -44,3 +44,6 @@ mypy_path = "src"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "revised: marks tests manually reviewed and protected from modification by agents",
+]
