@@ -12,6 +12,7 @@ from tomatempo.application.use_cases import (
     InvalidTaskListFilterError,
     ListTasks,
     TaskListFilters,
+    TaskListResult,
     TaskSort,
     normalize_task_list_filters,
 )
@@ -36,7 +37,7 @@ def list_tasks(
     task_tag_repository: InMemoryTaskTagRepository,
     filters: TaskListFilters | None = None,
     sort: TaskSort | None = None,
-):
+) -> TaskListResult:
     return ListTasks(
         task_repository=task_repository,
         project_repository=project_repository,
@@ -45,7 +46,7 @@ def list_tasks(
     ).execute(filters=filters, sort=sort)
 
 
-def task_titles(result) -> list[str]:
+def task_titles(result: TaskListResult) -> list[str]:
     return [item.task.title for item in result.items]
 
 
