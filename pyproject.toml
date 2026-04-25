@@ -31,6 +31,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+cache-dir = "/tmp/tomatempo-ruff-cache"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
@@ -40,10 +41,12 @@ python_version = "3.12"
 plugins = ["pydantic.mypy"]
 strict = true
 mypy_path = "src"
+cache_dir = "/tmp/tomatempo-mypy-cache"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+cache_dir = "/tmp/tomatempo-pytest-cache"
 markers = [
     "revised: marks tests manually reviewed and protected from modification by agents",
 ]

@@ -38,8 +38,18 @@ docker compose run --rm app poetry run alembic upgrade head
 
 ## Quality checks
 
+Install local dependencies first:
+
+```bash
+poetry install --no-root
+```
+
+Then run checks through Poetry:
+
 ```bash
 poetry run ruff check .
 poetry run mypy src tests
 poetry run pytest
 ```
+
+If you prefer running `pytest`, `ruff`, and `mypy` directly, activate the Poetry virtualenv first.
