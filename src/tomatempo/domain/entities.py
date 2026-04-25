@@ -20,6 +20,16 @@ class Project:
 
 
 @dataclass(frozen=True)
+class Tag:
+    name: str
+    id: UUID = field(default_factory=uuid4)
+    created_at: datetime = field(default_factory=utc_now)
+    updated_at: datetime = field(default_factory=utc_now)
+    description: str | None = None
+    is_archived: bool = False
+
+
+@dataclass(frozen=True)
 class Task:
     project_id: UUID
     title: str

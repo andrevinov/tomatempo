@@ -4,11 +4,13 @@ from datetime import date
 from typing import Protocol
 from uuid import UUID
 
-from tomatempo.domain.entities import Project, Task, utc_now
+from tomatempo.domain.entities import Project, Tag, Task, utc_now
 from tomatempo.domain.exceptions import (
     DuplicateProjectNameError,
+    DuplicateTagNameError,
     DuplicateTaskTitleError,
     InvalidProjectNameError,
+    InvalidTagNameError,
     InvalidTaskPriorityError,
     InvalidTaskTitleError,
 )
@@ -37,6 +39,26 @@ class TaskRepository(Protocol):
     def list(self) -> Iterable[Task]: ...
 
 
+class TagRepository(Protocol):
+    def save(self, tag: Tag) -> Tag: ...
+
+    def get_by_id(self, tag_id: UUID) -> Tag | None: ...
+
+    def get_by_name(self, name: str) -> Tag | None: ...
+
+    def list(self) -> Iterable[Tag]: ...
+
+
+class TaskTagRepository(Protocol):
+    def attach(self, task_id: UUID, tag_id: UUID) -> bool: ...
+
+    def remove(self, task_id: UUID, tag_id: UUID) -> bool: ...
+
+    def replace_for_task(self, task_id: UUID, tag_ids: set[UUID]) -> bool: ...
+
+    def list_tag_ids_for_task(self, task_id: UUID) -> set[UUID]: ...
+
+
 def normalize_required_project_name(name: str) -> str:
     normalized_name = name.strip()
     if not normalized_name:
@@ -49,6 +71,13 @@ def normalize_required_task_title(title: str) -> str:
     if not normalized_title:
         raise InvalidTaskTitleError
     return normalized_title
+
+
+def normalize_required_tag_name(name: str) -> str:
+    without_hash = name.strip().removeprefix("#").strip()
+    if not without_hash:
+        raise InvalidTagNameError
+    return "-".join(without_hash.split()).casefold()
 
 
 def normalize_priority(priority: TaskPriority | str) -> TaskPriority:
@@ -83,6 +112,31 @@ class GetOrCreateProjectByName:
             return existing_project
 
         return self.project_repository.save(Project(name=normalized_name))
+
+
+class CreateTag:
+    def __init__(self, tag_repository: TagRepository) -> None:
+        self.tag_repository = tag_repository
+
+    def execute(self, name: str) -> Tag:
+        normalized_name = normalize_required_tag_name(name)
+        if self.tag_repository.get_by_name(normalized_name) is not None:
+            raise DuplicateTagNameError
+
+        return self.tag_repository.save(Tag(name=normalized_name))
+
+
+class GetOrCreateTagByName:
+    def __init__(self, tag_repository: TagRepository) -> None:
+        self.tag_repository = tag_repository
+
+    def execute(self, name: str) -> Tag:
+        normalized_name = normalize_required_tag_name(name)
+        existing_tag = self.tag_repository.get_by_name(normalized_name)
+        if existing_tag is not None:
+            return existing_tag
+
+        return self.tag_repository.save(Tag(name=normalized_name))
 
 
 class CreateTask:
@@ -120,6 +174,120 @@ class CreateTask:
         return project
 
 
+class AttachTagToTask:
+    def __init__(
+        self,
+        task_repository: TaskRepository,
+        tag_repository: TagRepository,
+        task_tag_repository: TaskTagRepository,
+    ) -> None:
+        self.task_repository = task_repository
+        self.tag_repository = tag_repository
+        self.task_tag_repository = task_tag_repository
+
+    def execute(self, task_id: UUID, tag_name: str) -> Task:
+        task = get_task_or_raise(self.task_repository, task_id)
+        tag = GetOrCreateTagByName(self.tag_repository).execute(tag_name)
+        attached = self.task_tag_repository.attach(task.id, tag.id)
+        if not attached:
+            return task
+
+        return save_task_with_updated_timestamp(self.task_repository, task)
+
+
+class AttachTagsToTask:
+    def __init__(
+        self,
+        task_repository: TaskRepository,
+        tag_repository: TagRepository,
+        task_tag_repository: TaskTagRepository,
+    ) -> None:
+        self.task_repository = task_repository
+        self.tag_repository = tag_repository
+        self.task_tag_repository = task_tag_repository
+
+    def execute(self, task_id: UUID, tag_names: Iterable[str]) -> Task:
+        task = get_task_or_raise(self.task_repository, task_id)
+        changed = False
+        for tag_name in unique_normalized_tag_names(tag_names):
+            tag = GetOrCreateTagByName(self.tag_repository).execute(tag_name)
+            changed = self.task_tag_repository.attach(task.id, tag.id) or changed
+
+        if not changed:
+            return task
+
+        return save_task_with_updated_timestamp(self.task_repository, task)
+
+
+class RemoveTagFromTask:
+    def __init__(
+        self,
+        task_repository: TaskRepository,
+        tag_repository: TagRepository,
+        task_tag_repository: TaskTagRepository,
+    ) -> None:
+        self.task_repository = task_repository
+        self.tag_repository = tag_repository
+        self.task_tag_repository = task_tag_repository
+
+    def execute(self, task_id: UUID, tag_name: str) -> Task:
+        task = get_task_or_raise(self.task_repository, task_id)
+        tag = self.tag_repository.get_by_name(normalize_required_tag_name(tag_name))
+        if tag is None:
+            return task
+
+        removed = self.task_tag_repository.remove(task.id, tag.id)
+        if not removed:
+            return task
+
+        return save_task_with_updated_timestamp(self.task_repository, task)
+
+
+class ReplaceTaskTags:
+    def __init__(
+        self,
+        task_repository: TaskRepository,
+        tag_repository: TagRepository,
+        task_tag_repository: TaskTagRepository,
+    ) -> None:
+        self.task_repository = task_repository
+        self.tag_repository = tag_repository
+        self.task_tag_repository = task_tag_repository
+
+    def execute(self, task_id: UUID, tag_names: Iterable[str]) -> Task:
+        task = get_task_or_raise(self.task_repository, task_id)
+        tags = [
+            GetOrCreateTagByName(self.tag_repository).execute(tag_name)
+            for tag_name in unique_normalized_tag_names(tag_names)
+        ]
+        changed = self.task_tag_repository.replace_for_task(
+            task.id,
+            {tag.id for tag in tags},
+        )
+        if not changed:
+            return task
+
+        return save_task_with_updated_timestamp(self.task_repository, task)
+
+
+class ListTaskTags:
+    def __init__(
+        self,
+        tag_repository: TagRepository,
+        task_tag_repository: TaskTagRepository,
+    ) -> None:
+        self.tag_repository = tag_repository
+        self.task_tag_repository = task_tag_repository
+
+    def execute(self, task_id: UUID) -> list[Tag]:
+        tags = [
+            tag
+            for tag_id in self.task_tag_repository.list_tag_ids_for_task(task_id)
+            if (tag := self.tag_repository.get_by_id(tag_id)) is not None
+        ]
+        return sorted(tags, key=lambda tag: tag.name)
+
+
 class CompleteTask:
     def __init__(self, task_repository: TaskRepository) -> None:
         self.task_repository = task_repository
@@ -137,10 +305,7 @@ class CompleteTask:
         )
 
     def _get_task(self, task_id: UUID) -> Task:
-        task = self.task_repository.get_by_id(task_id)
-        if task is None:
-            raise ValueError("Task not found.")
-        return task
+        return get_task_or_raise(self.task_repository, task_id)
 
 
 class ReopenTask:
@@ -159,10 +324,7 @@ class ReopenTask:
         )
 
     def _get_task(self, task_id: UUID) -> Task:
-        task = self.task_repository.get_by_id(task_id)
-        if task is None:
-            raise ValueError("Task not found.")
-        return task
+        return get_task_or_raise(self.task_repository, task_id)
 
 
 class ArchiveTask:
@@ -182,10 +344,7 @@ class ArchiveTask:
         )
 
     def _get_task(self, task_id: UUID) -> Task:
-        task = self.task_repository.get_by_id(task_id)
-        if task is None:
-            raise ValueError("Task not found.")
-        return task
+        return get_task_or_raise(self.task_repository, task_id)
 
 
 class UpdateTask:
@@ -240,7 +399,29 @@ class UpdateTask:
         )
 
     def _get_task(self, task_id: UUID) -> Task:
-        task = self.task_repository.get_by_id(task_id)
-        if task is None:
-            raise ValueError("Task not found.")
-        return task
+        return get_task_or_raise(self.task_repository, task_id)
+
+
+def unique_normalized_tag_names(tag_names: Iterable[str]) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for tag_name in tag_names:
+        normalized_name = normalize_required_tag_name(tag_name)
+        if normalized_name not in seen:
+            names.append(normalized_name)
+            seen.add(normalized_name)
+    return names
+
+
+def get_task_or_raise(task_repository: TaskRepository, task_id: UUID) -> Task:
+    task = task_repository.get_by_id(task_id)
+    if task is None:
+        raise ValueError("Task not found.")
+    return task
+
+
+def save_task_with_updated_timestamp(
+    task_repository: TaskRepository,
+    task: Task,
+) -> Task:
+    return task_repository.save(replace(task, updated_at=utc_now()))

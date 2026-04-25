@@ -20,3 +20,11 @@ class DuplicateTaskTitleError(TomatempoDomainError):
 
 class InvalidTaskPriorityError(TomatempoDomainError):
     """Raised when a task priority is not allowed."""
+
+
+class InvalidTagNameError(TomatempoDomainError):
+    """Raised when a tag name is empty or blank."""
+
+
+class DuplicateTagNameError(TomatempoDomainError):
+    """Raised when a tag name already exists."""

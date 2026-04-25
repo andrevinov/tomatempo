@@ -1,22 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
 from datetime import date
-from typing import Protocol
-from uuid import UUID
 
 import pytest
 
 from tomatempo.application.use_cases import (
     ArchiveTask,
     CompleteTask,
-    CreateProject,
-    CreateTask,
     GetOrCreateProjectByName,
     ReopenTask,
     UpdateTask,
 )
-from tomatempo.domain.entities import Project, Task
 from tomatempo.domain.exceptions import (
     DuplicateProjectNameError,
     DuplicateTaskTitleError,
@@ -26,117 +20,12 @@ from tomatempo.domain.exceptions import (
 )
 from tomatempo.domain.value_objects import TaskPriority, TaskStatus
 
-
-class ProjectRepositoryContract(Protocol):
-    def save(self, project: Project) -> Project: ...
-
-    def get_by_id(self, project_id: UUID) -> Project | None: ...
-
-    def get_by_name(self, name: str) -> Project | None: ...
-
-    def list(self) -> Iterable[Project]: ...
-
-
-class TaskRepositoryContract(Protocol):
-    def save(self, task: Task) -> Task: ...
-
-    def get_by_id(self, task_id: UUID) -> Task | None: ...
-
-    def get_by_project_and_title(self, project_id: UUID, title: str) -> Task | None: ...
-
-    def list(self) -> Iterable[Task]: ...
-
-
-def normalized_text(value: str) -> str:
-    return value.strip().casefold()
-
-
-class InMemoryProjectRepository:
-    def __init__(self) -> None:
-        self.projects: dict[UUID, Project] = {}
-
-    def save(self, project: Project) -> Project:
-        self.projects[project.id] = project
-        return project
-
-    def get_by_id(self, project_id: UUID) -> Project | None:
-        return self.projects.get(project_id)
-
-    def get_by_name(self, name: str) -> Project | None:
-        normalized_name = normalized_text(name)
-        return next(
-            (
-                project
-                for project in self.projects.values()
-                if normalized_text(project.name) == normalized_name
-            ),
-            None,
-        )
-
-    def list(self) -> Iterable[Project]:
-        return self.projects.values()
-
-    def count(self) -> int:
-        return len(self.projects)
-
-
-class InMemoryTaskRepository:
-    def __init__(self) -> None:
-        self.tasks: dict[UUID, Task] = {}
-
-    def save(self, task: Task) -> Task:
-        self.tasks[task.id] = task
-        return task
-
-    def get_by_id(self, task_id: UUID) -> Task | None:
-        return self.tasks.get(task_id)
-
-    def get_by_project_and_title(self, project_id: UUID, title: str) -> Task | None:
-        normalized_title = normalized_text(title)
-        return next(
-            (
-                task
-                for task in self.tasks.values()
-                if task.project_id == project_id
-                and normalized_text(task.title) == normalized_title
-            ),
-            None,
-        )
-
-    def list(self) -> Iterable[Task]:
-        return self.tasks.values()
-
-    def count(self) -> int:
-        return len(self.tasks)
-
-
-@pytest.fixture
-def project_repository() -> InMemoryProjectRepository:
-    return InMemoryProjectRepository()
-
-
-@pytest.fixture
-def task_repository() -> InMemoryTaskRepository:
-    return InMemoryTaskRepository()
-
-
-def create_project(
-    project_repository: ProjectRepositoryContract,
-    name: str = "Tomatempo",
-) -> Project:
-    return CreateProject(project_repository).execute(name=name)
-
-
-def create_task(
-    task_repository: TaskRepositoryContract,
-    project_repository: ProjectRepositoryContract,
-    title: str = "Prepare class",
-    project_id: UUID | None = None,
-) -> Task:
-    return CreateTask(task_repository, project_repository).execute(
-        title=title,
-        project_id=project_id,
-    )
+from .conftest import (
+    InMemoryProjectRepository,
+    InMemoryTaskRepository,
+    create_project,
+    create_task,
+)
 
 
 @pytest.mark.revised
