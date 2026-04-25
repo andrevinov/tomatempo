@@ -5,6 +5,7 @@ from datetime import date
 import pytest
 
 from tomatempo.application.use_cases import (
+    CsvImportResult,
     ImportCsvRow,
     ImportTasksFromCsvText,
     parse_tag_cell,
@@ -29,7 +30,7 @@ def import_csv(
     task_repository: InMemoryTaskRepository,
     tag_repository: InMemoryTagRepository,
     task_tag_repository: InMemoryTaskTagRepository,
-):
+) -> CsvImportResult:
     return ImportTasksFromCsvText(
         task_repository=task_repository,
         project_repository=project_repository,
@@ -54,7 +55,7 @@ def import_row(
     ).execute(row=row, row_number=row_number)
 
 
-def error_codes(result) -> list[str]:
+def error_codes(result: CsvImportResult) -> list[str]:
     return [error.code for error in result.errors]
 
 
@@ -821,7 +822,7 @@ def test_import_errors_include_row_numbers_based_on_csv_data_rows(
         project_repository,
         task_repository,
         tag_repository,
-        task_tag_repository,´
+        task_tag_repository,
     )
 
     assert result.errors[0].row_number == 3

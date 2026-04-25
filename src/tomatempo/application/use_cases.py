@@ -1,3 +1,10 @@
+from tomatempo.application.csv_import import (
+    CsvImportError,
+    CsvImportResult,
+    ImportCsvRow,
+    ImportTasksFromCsvText,
+    parse_tag_cell,
+)
 from tomatempo.application.projects import (
     DEFAULT_PROJECT_NAME,
     CreateProject,
@@ -36,8 +43,12 @@ __all__ = [
     "CreateProject",
     "CreateTag",
     "CreateTask",
+    "CsvImportError",
+    "CsvImportResult",
     "GetOrCreateProjectByName",
     "GetOrCreateTagByName",
+    "ImportCsvRow",
+    "ImportTasksFromCsvText",
     "ListTaskTags",
     "RemoveTagFromTask",
     "ReopenTask",
@@ -48,6 +59,7 @@ __all__ = [
     "normalize_required_project_name",
     "normalize_required_tag_name",
     "normalize_required_task_title",
+    "parse_tag_cell",
     "save_task_with_updated_timestamp",
     "unique_normalized_tag_names",
 ]
