@@ -3,7 +3,7 @@ from collections.abc import Generator
 from sqlalchemy import text
 from sqlmodel import Session, SQLModel, create_engine
 
-from infrastructure.config import get_settings
+from tomatempo.infrastructure.config import get_settings
 
 engine = create_engine(get_settings().database_url, pool_pre_ping=True)
 

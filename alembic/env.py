@@ -4,7 +4,7 @@ from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 from alembic import context
-from infrastructure.config import get_settings
+from tomatempo.infrastructure.config import get_settings
 
 config = context.config
 

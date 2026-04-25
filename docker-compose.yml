@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: .
-    command: poetry run uvicorn interface.web.main:app --host 0.0.0.0 --port 8000 --reload
+    command: poetry run uvicorn tomatempo.interface.web.main:app --host 0.0.0.0 --port 8000 --reload
     env_file:
       - .env
     environment:

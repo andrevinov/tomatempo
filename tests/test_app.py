@@ -1,4 +1,4 @@
-from interface.web.main import read_root
+from tomatempo.interface.web.main import read_root
 
 
 def test_read_root() -> None:

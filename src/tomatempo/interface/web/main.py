@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
 
-from infrastructure.database import check_database_connection
+from tomatempo.infrastructure.database import check_database_connection
 
-templates = Jinja2Templates(directory="src/interface/web/templates")
+templates = Jinja2Templates(directory="src/tomatempo/interface/web/templates")
 
 
 @asynccontextmanager
