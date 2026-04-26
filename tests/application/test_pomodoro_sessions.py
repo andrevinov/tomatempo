@@ -1005,10 +1005,9 @@ def test_finished_sessions_preserve_planned_duration(
         ended_at=START_TIME + timedelta(minutes=25),
     )
 
-    assert (
-        pomodoro_session_repository.get_by_id(completed.id).planned_duration_minutes
-        == 10
-    )
+    saved_completed_session = pomodoro_session_repository.get_by_id(completed.id)
+    assert saved_completed_session is not None
+    assert saved_completed_session.planned_duration_minutes == 10
     assert interrupted.planned_duration_minutes == 15
 
 
