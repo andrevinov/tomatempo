@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -16,47 +14,21 @@ from tomatempo.application.use_cases import (
     ResumePomodoroSession,
     StartPomodoroSession,
 )
-from tomatempo.domain.entities import PomodoroSession, Task
+from tomatempo.domain.entities import PomodoroSession
 from tomatempo.domain.value_objects import (
     PomodoroSessionStatus,
     PomodoroSessionType,
     TaskStatus,
 )
 
-from .conftest import InMemoryTaskRepository, create_project, create_task
+from .conftest import (
+    InMemoryPomodoroSessionRepository,
+    InMemoryTaskRepository,
+    create_task_with_status,
+    get_task,
+)
 
 START_TIME = datetime(2026, 5, 1, 9, 0, tzinfo=UTC)
-
-
-class InMemoryPomodoroSessionRepository:
-    def __init__(self) -> None:
-        self.sessions: dict[UUID, PomodoroSession] = {}
-
-    def save(self, session: PomodoroSession) -> PomodoroSession:
-        self.sessions[session.id] = session
-        return session
-
-    def get_by_id(self, session_id: UUID) -> PomodoroSession | None:
-        return self.sessions.get(session_id)
-
-    def get_active(self) -> PomodoroSession | None:
-        return next(
-            (
-                session
-                for session in self.sessions.values()
-                if session.status
-                in {PomodoroSessionStatus.RUNNING, PomodoroSessionStatus.PAUSED}
-            ),
-            None,
-        )
-
-    def list(self) -> Iterable[PomodoroSession]:
-        return self.sessions.values()
-
-
-@pytest.fixture
-def pomodoro_session_repository() -> InMemoryPomodoroSessionRepository:
-    return InMemoryPomodoroSessionRepository()
 
 
 def start_session(
@@ -123,23 +95,6 @@ def interrupt_session(
         reason=reason,
     )
 
-
-def get_task(task_repository: InMemoryTaskRepository, task_id: UUID) -> Task:
-    task = task_repository.get_by_id(task_id)
-    assert task is not None
-    return task
-
-
-def create_task_with_status(
-    task_repository: InMemoryTaskRepository,
-    status: TaskStatus,
-) -> Task:
-    from .conftest import InMemoryProjectRepository
-
-    project_repository = InMemoryProjectRepository()
-    project = create_project(project_repository)
-    task = create_task(task_repository, project_repository, project_id=project.id)
-    return task_repository.save(replace(task, status=status, updated_at=START_TIME))
 
 @pytest.mark.revised
 def test_starting_focus_session_creates_running_session(
@@ -260,7 +215,9 @@ def test_starting_focus_session_can_associate_task(
     pomodoro_session_repository: InMemoryPomodoroSessionRepository,
     task_repository: InMemoryTaskRepository,
 ) -> None:
-    task = create_task_with_status(task_repository, TaskStatus.TODO)
+    task = create_task_with_status(
+        task_repository, TaskStatus.TODO, updated_at=START_TIME
+    )
 
     session = start_session(
         pomodoro_session_repository,
@@ -299,7 +256,9 @@ def test_starting_focus_session_rejects_archived_task(
     pomodoro_session_repository: InMemoryPomodoroSessionRepository,
     task_repository: InMemoryTaskRepository,
 ) -> None:
-    task = create_task_with_status(task_repository, TaskStatus.ARCHIVED)
+    task = create_task_with_status(
+        task_repository, TaskStatus.ARCHIVED, updated_at=START_TIME
+    )
 
     with pytest.raises(InvalidPomodoroSessionError):
         start_session(
@@ -319,7 +278,9 @@ def test_starting_break_session_rejects_task_association(
     task_repository: InMemoryTaskRepository,
     session_type: PomodoroSessionType,
 ) -> None:
-    task = create_task_with_status(task_repository, TaskStatus.TODO)
+    task = create_task_with_status(
+        task_repository, TaskStatus.TODO, updated_at=START_TIME
+    )
 
     with pytest.raises(InvalidPomodoroSessionError):
         start_session(
@@ -335,7 +296,9 @@ def test_starting_focus_session_for_todo_task_changes_task_status_to_doing(
     pomodoro_session_repository: InMemoryPomodoroSessionRepository,
     task_repository: InMemoryTaskRepository,
 ) -> None:
-    task = create_task_with_status(task_repository, TaskStatus.TODO)
+    task = create_task_with_status(
+        task_repository, TaskStatus.TODO, updated_at=START_TIME
+    )
 
     start_session(pomodoro_session_repository, task_repository, task_id=task.id)
 
@@ -347,7 +310,9 @@ def test_starting_focus_session_for_todo_task_updates_task_updated_at(
     pomodoro_session_repository: InMemoryPomodoroSessionRepository,
     task_repository: InMemoryTaskRepository,
 ) -> None:
-    task = create_task_with_status(task_repository, TaskStatus.TODO)
+    task = create_task_with_status(
+        task_repository, TaskStatus.TODO, updated_at=START_TIME
+    )
 
     start_session(pomodoro_session_repository, task_repository, task_id=task.id)
 
@@ -361,7 +326,7 @@ def test_starting_focus_session_for_non_todo_task_leaves_task_unchanged(
     task_repository: InMemoryTaskRepository,
     status: TaskStatus,
 ) -> None:
-    task = create_task_with_status(task_repository, status)
+    task = create_task_with_status(task_repository, status, updated_at=START_TIME)
 
     start_session(pomodoro_session_repository, task_repository, task_id=task.id)
 
@@ -770,7 +735,9 @@ def test_completing_session_does_not_complete_associated_task(
     pomodoro_session_repository: InMemoryPomodoroSessionRepository,
     task_repository: InMemoryTaskRepository,
 ) -> None:
-    task = create_task_with_status(task_repository, TaskStatus.TODO)
+    task = create_task_with_status(
+        task_repository, TaskStatus.TODO, updated_at=START_TIME
+    )
     session = start_session(
         pomodoro_session_repository,
         task_repository,
@@ -929,7 +896,9 @@ def test_interrupting_session_does_not_modify_associated_task_status(
     pomodoro_session_repository: InMemoryPomodoroSessionRepository,
     task_repository: InMemoryTaskRepository,
 ) -> None:
-    task = create_task_with_status(task_repository, TaskStatus.DONE)
+    task = create_task_with_status(
+        task_repository, TaskStatus.DONE, updated_at=START_TIME
+    )
     session = start_session(
         pomodoro_session_repository,
         task_repository,

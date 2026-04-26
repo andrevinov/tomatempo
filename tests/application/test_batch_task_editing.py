@@ -24,6 +24,7 @@ from .conftest import (
     attach_tags,
     create_project,
     create_task,
+    get_or_create_project,
     get_task,
     list_task_tag_names,
 )
@@ -62,9 +63,7 @@ def add_task(
     due_date: date | None = None,
     updated_at: datetime = BASE_TIME,
 ) -> Task:
-    project = project_repository.get_by_name(project_name)
-    if project is None:
-        project = create_project(project_repository, name=project_name)
+    project = get_or_create_project(project_repository, project_name)
 
     task = create_task(
         task_repository,

@@ -7,7 +7,6 @@ from uuid import uuid4
 import pytest
 
 from tomatempo.application.use_cases import (
-    AttachTagsToTask,
     BuildTaskListItem,
     InvalidTaskListFilterError,
     ListTasks,
@@ -24,6 +23,7 @@ from .conftest import (
     InMemoryTagRepository,
     InMemoryTaskRepository,
     InMemoryTaskTagRepository,
+    attach_tags,
     create_project,
     get_or_create_project,
 )
@@ -81,12 +81,15 @@ def add_task(
     )
     task = task_repository.save(task)
     if tags:
-        task = AttachTagsToTask(
+        task = attach_tags(
             task_repository,
             tag_repository,
             task_tag_repository,
-        ).execute(task.id, tags)
+            task,
+            tags,
+        )
     return task
+
 
 @pytest.mark.revised
 def test_listing_tasks_returns_all_non_archived_tasks_by_default(
