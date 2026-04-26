@@ -87,7 +87,7 @@ Once a test is marked as `revised`, agents must NEVER modify it during normal pr
 Agents may only modify tests marked as `revised` when the user explicitly authorizes it in the current conversation with this exact phrase:
 
 ```text
-GRANTED REVISED TEST FILE EDITION PERMISSION
+You are authorized to edit the revised test file.
 ```
 
 Even with permission granted, follow the rules given by the user about what could be changed on these files.
