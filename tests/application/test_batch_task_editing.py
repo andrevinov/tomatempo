@@ -7,7 +7,6 @@ from uuid import UUID, uuid4
 import pytest
 
 from tomatempo.application.use_cases import (
-    AttachTagsToTask,
     BatchEditTasks,
     BatchTaskOperation,
     BatchTaskResult,
@@ -22,8 +21,10 @@ from .conftest import (
     InMemoryTagRepository,
     InMemoryTaskRepository,
     InMemoryTaskTagRepository,
+    attach_tags,
     create_project,
     create_task,
+    get_task,
     list_task_tag_names,
 )
 
@@ -82,27 +83,6 @@ def add_task(
             archived_at=BASE_TIME if status == TaskStatus.ARCHIVED else None,
         )
     )
-
-
-def attach_tags(
-    task_repository: InMemoryTaskRepository,
-    tag_repository: InMemoryTagRepository,
-    task_tag_repository: InMemoryTaskTagRepository,
-    task: Task,
-    tag_names: list[str],
-) -> Task:
-    updated_task = AttachTagsToTask(
-        task_repository,
-        tag_repository,
-        task_tag_repository,
-    ).execute(task.id, tag_names)
-    return task_repository.save(replace(updated_task, updated_at=BASE_TIME))
-
-
-def get_task(task_repository: InMemoryTaskRepository, task_id: UUID) -> Task:
-    task = task_repository.get_by_id(task_id)
-    assert task is not None
-    return task
 
 
 def changed_titles(result: BatchTaskResult) -> list[str]:
@@ -734,7 +714,14 @@ def test_batch_attaching_tags_leaves_tasks_unchanged_when_all_tags_already_attac
     task_tag_repository: InMemoryTaskTagRepository,
 ) -> None:
     task = add_task(project_repository, task_repository, "Task")
-    attach_tags(task_repository, tag_repository, task_tag_repository, task, ["urgent"])
+    attach_tags(
+        task_repository,
+        tag_repository,
+        task_tag_repository,
+        task,
+        ["urgent"],
+        updated_at=BASE_TIME,
+    )
 
     result = batch_edit(
         project_repository,
@@ -779,7 +766,14 @@ def test_batch_removing_tags_removes_matching_task_tag_relationships(
     task_tag_repository: InMemoryTaskTagRepository,
 ) -> None:
     task = add_task(project_repository, task_repository, "Task")
-    attach_tags(task_repository, tag_repository, task_tag_repository, task, ["urgent"])
+    attach_tags(
+        task_repository,
+        tag_repository,
+        task_tag_repository,
+        task,
+        ["urgent"],
+        updated_at=BASE_TIME,
+    )
 
     result = batch_edit(
         project_repository,
@@ -825,7 +819,14 @@ def test_batch_removing_tags_leaves_tasks_unchanged_when_no_requested_tags_are_a
     task_tag_repository: InMemoryTaskTagRepository,
 ) -> None:
     task = add_task(project_repository, task_repository, "Task")
-    attach_tags(task_repository, tag_repository, task_tag_repository, task, ["other"])
+    attach_tags(
+        task_repository,
+        tag_repository,
+        task_tag_repository,
+        task,
+        ["other"],
+        updated_at=BASE_TIME,
+    )
 
     result = batch_edit(
         project_repository,
@@ -848,7 +849,14 @@ def test_batch_removing_tags_does_not_delete_tag_records(
     task_tag_repository: InMemoryTaskTagRepository,
 ) -> None:
     task = add_task(project_repository, task_repository, "Task")
-    attach_tags(task_repository, tag_repository, task_tag_repository, task, ["urgent"])
+    attach_tags(
+        task_repository,
+        tag_repository,
+        task_tag_repository,
+        task,
+        ["urgent"],
+        updated_at=BASE_TIME,
+    )
 
     batch_edit(
         project_repository,
@@ -877,6 +885,7 @@ def test_batch_removing_tags_does_not_modify_unselected_tasks(
         task_tag_repository,
         selected,
         ["urgent"],
+        updated_at=BASE_TIME,
     )
     attach_tags(
         task_repository,
@@ -884,6 +893,7 @@ def test_batch_removing_tags_does_not_modify_unselected_tasks(
         task_tag_repository,
         unselected,
         ["urgent"],
+        updated_at=BASE_TIME,
     )
 
     batch_edit(
@@ -908,7 +918,14 @@ def test_batch_replacing_tags_replaces_each_selected_task_tag_set(
     task_tag_repository: InMemoryTaskTagRepository,
 ) -> None:
     task = add_task(project_repository, task_repository, "Task")
-    attach_tags(task_repository, tag_repository, task_tag_repository, task, ["old"])
+    attach_tags(
+        task_repository,
+        tag_repository,
+        task_tag_repository,
+        task,
+        ["old"],
+        updated_at=BASE_TIME,
+    )
 
     result = batch_edit(
         project_repository,
@@ -998,7 +1015,14 @@ def test_batch_replacing_tags_clears_tags_when_given_empty_tag_list(
     task_tag_repository: InMemoryTaskTagRepository,
 ) -> None:
     task = add_task(project_repository, task_repository, "Task")
-    attach_tags(task_repository, tag_repository, task_tag_repository, task, ["urgent"])
+    attach_tags(
+        task_repository,
+        tag_repository,
+        task_tag_repository,
+        task,
+        ["urgent"],
+        updated_at=BASE_TIME,
+    )
 
     batch_edit(
         project_repository,
@@ -1020,7 +1044,14 @@ def test_batch_replacing_tags_leaves_tasks_unchanged_when_tag_sets_already_match
     task_tag_repository: InMemoryTaskTagRepository,
 ) -> None:
     task = add_task(project_repository, task_repository, "Task")
-    attach_tags(task_repository, tag_repository, task_tag_repository, task, ["urgent"])
+    attach_tags(
+        task_repository,
+        tag_repository,
+        task_tag_repository,
+        task,
+        ["urgent"],
+        updated_at=BASE_TIME,
+    )
 
     result = batch_edit(
         project_repository,
@@ -1045,7 +1076,12 @@ def test_batch_replacing_tags_does_not_modify_unselected_tasks(
     selected = add_task(project_repository, task_repository, "Selected")
     unselected = add_task(project_repository, task_repository, "Unselected")
     attach_tags(
-        task_repository, tag_repository, task_tag_repository, unselected, ["old"]
+        task_repository,
+        tag_repository,
+        task_tag_repository,
+        unselected,
+        ["old"],
+        updated_at=BASE_TIME,
     )
 
     batch_edit(

@@ -1,36 +1,20 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Protocol
+from dataclasses import replace
+from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 import pytest
 
+from tomatempo.application.ports import ProjectRepository, TaskRepository
 from tomatempo.application.use_cases import CreateProject, CreateTask
 from tomatempo.domain.entities import Project, Task
+from tomatempo.domain.value_objects import TaskStatus
 
 if TYPE_CHECKING:
-    from tomatempo.domain.entities import Tag
-
-
-class ProjectRepositoryContract(Protocol):
-    def save(self, project: Project) -> Project: ...
-
-    def get_by_id(self, project_id: UUID) -> Project | None: ...
-
-    def get_by_name(self, name: str) -> Project | None: ...
-
-    def list(self) -> Iterable[Project]: ...
-
-
-class TaskRepositoryContract(Protocol):
-    def save(self, task: Task) -> Task: ...
-
-    def get_by_id(self, task_id: UUID) -> Task | None: ...
-
-    def get_by_project_and_title(self, project_id: UUID, title: str) -> Task | None: ...
-
-    def list(self) -> Iterable[Task]: ...
+    from tomatempo.domain.entities import PomodoroSession, Tag
 
 
 def normalized_project_name(value: str) -> str:
@@ -178,6 +162,31 @@ class InMemoryTaskTagRepository:
         return len(self.list_tag_ids_for_task(task_id))
 
 
+class InMemoryPomodoroSessionRepository:
+    def __init__(self) -> None:
+        self.sessions: dict[UUID, PomodoroSession] = {}
+
+    def save(self, session: PomodoroSession) -> PomodoroSession:
+        self.sessions[session.id] = session
+        return session
+
+    def get_by_id(self, session_id: UUID) -> PomodoroSession | None:
+        return self.sessions.get(session_id)
+
+    def get_active(self) -> PomodoroSession | None:
+        return next(
+            (
+                session
+                for session in self.sessions.values()
+                if session.status in {"running", "paused"}
+            ),
+            None,
+        )
+
+    def list(self) -> Iterable[PomodoroSession]:
+        return self.sessions.values()
+
+
 @pytest.fixture
 def project_repository() -> InMemoryProjectRepository:
     return InMemoryProjectRepository()
@@ -199,6 +208,11 @@ def task_tag_repository() -> InMemoryTaskTagRepository:
 
 
 @pytest.fixture
+def pomodoro_session_repository() -> InMemoryPomodoroSessionRepository:
+    return InMemoryPomodoroSessionRepository()
+
+
+@pytest.fixture
 def task(
     project_repository: InMemoryProjectRepository,
     task_repository: InMemoryTaskRepository,
@@ -211,15 +225,15 @@ def task(
 
 
 def create_project(
-    project_repository: ProjectRepositoryContract,
+    project_repository: ProjectRepository,
     name: str = "Tomatempo",
 ) -> Project:
     return CreateProject(project_repository).execute(name=name)
 
 
 def create_task(
-    task_repository: TaskRepositoryContract,
-    project_repository: ProjectRepositoryContract,
+    task_repository: TaskRepository,
+    project_repository: ProjectRepository,
     title: str = "Prepare class",
     project_id: UUID | None = None,
 ) -> Task:
@@ -229,10 +243,57 @@ def create_task(
     )
 
 
+def create_task_with_status(
+    task_repository: TaskRepository,
+    status: TaskStatus,
+    updated_at: datetime,
+) -> Task:
+    project_repository = InMemoryProjectRepository()
+    project = create_project(project_repository)
+    task = create_task(task_repository, project_repository, project_id=project.id)
+    return task_repository.save(replace(task, status=status, updated_at=updated_at))
+
+
+def get_or_create_project(
+    project_repository: ProjectRepository,
+    name: str,
+) -> Project:
+    existing_project = project_repository.get_by_name(name)
+    if existing_project is not None:
+        return existing_project
+    return create_project(project_repository, name=name)
+
+
+def get_task(task_repository: TaskRepository, task_id: UUID) -> Task:
+    task = task_repository.get_by_id(task_id)
+    assert task is not None
+    return task
+
+
 def create_tag(tag_repository: InMemoryTagRepository, name: str = "urgent") -> Tag:
     from tomatempo.application.use_cases import CreateTag
 
     return CreateTag(tag_repository).execute(name=name)
+
+
+def attach_tags(
+    task_repository: TaskRepository,
+    tag_repository: InMemoryTagRepository,
+    task_tag_repository: InMemoryTaskTagRepository,
+    task: Task,
+    tag_names: list[str],
+    updated_at: datetime | None = None,
+) -> Task:
+    from tomatempo.application.use_cases import AttachTagsToTask
+
+    updated_task = AttachTagsToTask(
+        task_repository,
+        tag_repository,
+        task_tag_repository,
+    ).execute(task.id, tag_names)
+    if updated_at is None:
+        return updated_task
+    return task_repository.save(replace(updated_task, updated_at=updated_at))
 
 
 def list_task_tag_names(

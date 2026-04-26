@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from tomatempo.domain.entities import Project, Tag, Task
+
+if TYPE_CHECKING:
+    from tomatempo.domain.entities import PomodoroSession
 
 
 class ProjectRepository(Protocol):
@@ -43,3 +48,13 @@ class TaskTagRepository(Protocol):
     def replace_for_task(self, task_id: UUID, tag_ids: set[UUID]) -> bool: ...
 
     def list_tag_ids_for_task(self, task_id: UUID) -> set[UUID]: ...
+
+
+class PomodoroSessionRepository(Protocol):
+    def save(self, session: PomodoroSession) -> PomodoroSession: ...
+
+    def get_by_id(self, session_id: UUID) -> PomodoroSession | None: ...
+
+    def get_active(self) -> PomodoroSession | None: ...
+
+    def list(self) -> Iterable[PomodoroSession]: ...

@@ -16,7 +16,7 @@ from tomatempo.application.use_cases import (
     TaskSort,
     normalize_task_list_filters,
 )
-from tomatempo.domain.entities import Project, Task
+from tomatempo.domain.entities import Task
 from tomatempo.domain.value_objects import TaskPriority, TaskStatus
 
 from .conftest import (
@@ -25,6 +25,7 @@ from .conftest import (
     InMemoryTaskRepository,
     InMemoryTaskTagRepository,
     create_project,
+    get_or_create_project,
 )
 
 BASE_TIME = datetime(2026, 5, 1, 9, 0, tzinfo=UTC)
@@ -48,16 +49,6 @@ def list_tasks(
 
 def task_titles(result: TaskListResult) -> list[str]:
     return [item.task.title for item in result.items]
-
-
-def get_or_create_project(
-    project_repository: InMemoryProjectRepository,
-    name: str,
-) -> Project:
-    existing_project = project_repository.get_by_name(name)
-    if existing_project is not None:
-        return existing_project
-    return create_project(project_repository, name=name)
 
 
 def add_task(
