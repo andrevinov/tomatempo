@@ -84,13 +84,13 @@ A test marked with `revised` is considered reviewed and protected.
 
 Once a test is marked as `revised`, agents must NEVER modify it during normal production-code implementation.
 
-Agents may only modify tests marked as `revised` when the user explicitly authorizes it in the current conversation with a clear phrase such as:
+Agents may only modify tests marked as `revised` when the user explicitly authorizes it in the current conversation with this exact phrase:
 
 ```text
-ALTERAÇÃO DE TESTES REVISED LIBERADA
+GRANTED REVISED TEST FILE EDITION PERMISSION
 ```
 
-or an equivalent explicit authorization.
+Even with permission granted, follow the rules given by the user about what could be changed on these files.
 
 If an agent believes that a `revised` test must be changed in order to make the system work, but the user has not explicitly authorized changes to revised tests, the agent must:
 
