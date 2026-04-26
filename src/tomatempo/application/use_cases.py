@@ -1,3 +1,11 @@
+from tomatempo.application.batch_task_editing import (
+    BatchEditTasks,
+    BatchTaskError,
+    BatchTaskOperation,
+    BatchTaskResult,
+    InvalidBatchTaskEditError,
+    normalize_batch_task_selection,
+)
 from tomatempo.application.csv_import import (
     CsvImportError,
     CsvImportResult,
@@ -49,6 +57,10 @@ __all__ = [
     "ArchiveTask",
     "AttachTagsToTask",
     "AttachTagToTask",
+    "BatchEditTasks",
+    "BatchTaskError",
+    "BatchTaskOperation",
+    "BatchTaskResult",
     "BuildTaskListItem",
     "CompleteTask",
     "CreateProject",
@@ -60,6 +72,7 @@ __all__ = [
     "GetOrCreateTagByName",
     "ImportCsvRow",
     "ImportTasksFromCsvText",
+    "InvalidBatchTaskEditError",
     "InvalidTaskListFilterError",
     "ListTaskTags",
     "ListTasks",
@@ -72,6 +85,7 @@ __all__ = [
     "TaskSort",
     "UpdateTask",
     "get_task_or_raise",
+    "normalize_batch_task_selection",
     "normalize_priority",
     "normalize_required_project_name",
     "normalize_required_tag_name",
