@@ -243,6 +243,24 @@ def create_task(
     )
 
 
+def create_task_with_updated_at(
+    task_repository: TaskRepository,
+    project_repository: ProjectRepository,
+    title: str = "Prepare class",
+    updated_at: datetime | None = None,
+    project_id: UUID | None = None,
+) -> Task:
+    task = create_task(
+        task_repository,
+        project_repository,
+        title=title,
+        project_id=project_id,
+    )
+    if updated_at is None:
+        return task
+    return task_repository.save(replace(task, updated_at=updated_at))
+
+
 def create_task_with_status(
     task_repository: TaskRepository,
     status: TaskStatus,
