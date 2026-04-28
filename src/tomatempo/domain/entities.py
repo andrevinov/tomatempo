@@ -48,6 +48,7 @@ class Task:
     completed_at: datetime | None = None
     archived_at: datetime | None = None
     sort_order: int | None = None
+    estimated_pomodoros: int | None = None
 
 
 @dataclass(frozen=True)
